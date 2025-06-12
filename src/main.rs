@@ -89,6 +89,14 @@ impl App {
                     self.search.pop();
                     fuzzy_sort_in_place(&mut self.paths, &self.search);
                 }
+                KeyCode::Enter => {
+                    if let Some(selection) = self.selected {
+                        println!("{}", self.paths[selection]);
+                    } else {
+                        println!(".");
+                    }
+                    self.exit = true;
+                }
                 KeyCode::Esc => self.exit = true,
                 _ => {}
             }
