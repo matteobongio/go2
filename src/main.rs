@@ -1,5 +1,4 @@
-use std::io::{Stderr, stderr};
-
+use std::{io::{stderr, Stderr}, path::PathBuf};
 use clap::Parser;
 use cli::{Args, Commands};
 use color_eyre::Result;
@@ -153,9 +152,9 @@ fn main() -> Result<()> {
 
     if let Some(Commands::Add { path }) = args.command {
         if let Some(add) = path.as_deref() {
-            let mut path = String::from('\n');
-            path.push_str(add);
-            config::add_path(path);
+            let path = PathBuf::from(add);
+            let path = realpath::realpath(&path).unwrap();
+            config::add_path(path.display().to_string() + "\n");
             Ok(())
         } else {
             eprintln!("missing path to add.");
