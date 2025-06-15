@@ -2,7 +2,7 @@ use std::fs;
 use std::io::{BufRead, BufReader, Write};
 use std::path::PathBuf;
 
-fn get_config() -> PathBuf {
+pub fn get_config() -> PathBuf {
     let mut config_dir = dirs::config_dir().unwrap();
     config_dir.push("goto/");
     if !config_dir.exists() {

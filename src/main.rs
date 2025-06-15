@@ -1,3 +1,5 @@
+use std::io::{Stderr, stderr};
+
 use clap::Parser;
 use cli::{Args, Commands};
 use color_eyre::Result;
@@ -5,14 +7,16 @@ mod cli;
 mod config;
 use config::get_paths;
 use ratatui::{
-    prelude::*,
-    widgets::{BorderType, Borders, List, ListState},
+    crossterm::{
+        execute,
+        terminal::{enable_raw_mode, EnterAlternateScreen},
+    }, prelude::*, restore, widgets::{BorderType, Borders, List, ListState}
 };
 use rustic_fuzz::fuzzy_sort_in_place;
 
 use crossterm::event::{self, KeyCode};
 use ratatui::{
-    DefaultTerminal, Frame,
+    Frame,
     widgets::{Block, Paragraph},
 };
 
@@ -38,7 +42,7 @@ impl App {
         }
     }
 
-    fn run(&mut self, terminal: &mut DefaultTerminal) -> Result<()> {
+    fn run(&mut self, terminal: &mut Terminal<CrosstermBackend<Stderr>>) -> Result<()> {
         while !self.exit {
             terminal.draw(|frame| self.render(frame))?;
             self.handle_events();
@@ -97,6 +101,9 @@ impl App {
                     }
                     self.exit = true;
                 }
+                KeyCode::Tab => {
+                    open::that(config::get_config()).unwrap();
+                }
                 KeyCode::Esc => self.exit = true,
                 _ => {}
             }
@@ -119,12 +126,24 @@ impl App {
             .highlight_symbol(">>")
             .repeat_highlight_symbol(true);
 
+        let help = Paragraph::new("tab: edit").block(
+            Block::new()
+                .title("Help")
+                .borders(Borders::ALL)
+                .border_type(BorderType::Rounded),
+        );
+
         let layout = Layout::default()
             .direction(Direction::Vertical)
-            .constraints(vec![Constraint::Length(3), Constraint::Percentage(100)])
+            .constraints(vec![
+                Constraint::Length(3),
+                Constraint::Percentage(100),
+                Constraint::Length(3),
+            ])
             .split(frame.area());
         frame.render_widget(search_bar, layout[0]);
         frame.render_stateful_widget(paths, layout[1], &mut state);
+        frame.render_widget(help, layout[2]);
     }
 }
 
@@ -143,9 +162,24 @@ fn main() -> Result<()> {
             Ok(())
         }
     } else {
-        let mut terminal = ratatui::init();
+        // init
+        set_panic_hook();
+        enable_raw_mode()?;
+        execute!(stderr(), EnterAlternateScreen)?;
+        let backend = CrosstermBackend::new(stderr());
+        let mut terminal = Terminal::new(backend).unwrap();
         let result = App::new().run(&mut terminal);
         ratatui::restore();
         result
     }
+}
+
+fn set_panic_hook() {
+    let hook = std::panic::take_hook();
+
+    std::panic::set_hook(Box::new(move |info| {
+        restore();
+
+        hook(info);
+    }));
 }
